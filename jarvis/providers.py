@@ -1,5 +1,6 @@
 import base64
 import json
+import re
 from queue import Empty, Queue
 from threading import Thread
 from urllib.parse import quote
@@ -174,7 +175,31 @@ class Provider:
         raise ProviderError("The model did not return the expected structured connection test.")
 
     def decide(self, payload, png=None):
-        raw = self._run(PLANNER, json.dumps(payload, ensure_ascii=False), png, SCHEMA)
+        schema = SCHEMA
+        instructions = PLANNER
+        goal = payload.get("goal", "")
+        urls = re.findall(r"https?://[^\\s<>\"']+", goal)
+        # Explicit read-only requests have a small state space. Limit the model's
+        # next actions to the current stage so small models cannot re-open a tab.
+        if len(urls) == 1 and re.search(r"\\b(?:only read|read.only)\\b", goal, re.I):
+            url = urls[0].rstrip(".,)")
+            browser = payload.get("observation", {}).get("browser")
+            evidence = payload.get("verified_results", [])
+            if not browser:
+                properties = {"kind": {"type": "string", "enum": ["open_browser"]},
+                              "target": {"type": "string", "enum": [url]}}
+                next_step = "Open the requested URL."
+            elif any(item.startswith("Visible page text from ") for item in evidence):
+                properties = {"kind": {"type": "string", "enum": ["finish"]},
+                              "text": {"type": "string"}}
+                next_step = "Answer the user's question from the verified page text and finish."
+            else:
+                properties = {"kind": {"type": "string", "enum": ["read_page"]}}
+                next_step = "Read the currently open page."
+            schema = {"type": "object", "properties": properties,
+                      "required": list(properties), "additionalProperties": False}
+            instructions += "\\nCurrent step: " + next_step
+        raw = self._run(instructions, json.dumps(payload, ensure_ascii=False), png, schema)
         try:
             return Action.model_validate_json(raw)
         except ValidationError:
