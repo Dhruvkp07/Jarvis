@@ -21,6 +21,10 @@ jobs:
         run: python -m venv .venv
       - name: Test and package Jarvis
         run: .\setup.ps1 -Test -Build
+      - name: Verify Credential Manager round trip
+        shell: pwsh
+        run: |
+          .\.venv\Scripts\python.exe -c "from jarvis.config import save_gemini_key,gemini_key,clear_gemini_key; save_gemini_key('test-key-123'); assert gemini_key()=='test-key-123'; clear_gemini_key()"
       - name: Launch packaged app and verify Chrome
         shell: pwsh
         run: |
