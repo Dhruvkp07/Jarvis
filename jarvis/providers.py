@@ -176,6 +176,7 @@ class Provider:
 
     def decide(self, payload, png=None):
         schema = SCHEMA
+        bound_fields = {}
         instructions = PLANNER
         goal = payload.get("goal", "")
         urls = re.findall(r"https?://[^\\s<>\"']+", goal)
@@ -201,8 +202,14 @@ class Provider:
             instructions += "\\nCurrent step: " + next_step
         raw = self._run(instructions, json.dumps(payload, ensure_ascii=False), png, schema)
         try:
-            return Action.model_validate_json(raw)
-        except ValidationError:
+            values = json.loads(raw)
+            if not isinstance(values, dict):
+                raise ValueError("Expected a JSON object")
+            if bound_fields:
+                values = {key: value for key, value in values.items() if key in schema["properties"]}
+                values.update(bound_fields)
+            return Action.model_validate(values)
+        except (ValueError, ValidationError):
             raise ProviderError(
                 "The model returned an invalid action. Jarvis did not execute it."
             ) from None
