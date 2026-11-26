@@ -36,16 +36,12 @@ def main():
             native.fill(editor, "Jarvis Windows smoke\nQ-107, café")
             print(native.save_notepad(note))
 
-            page = browser.start_page(site)
+            browser.start_page(site)
             state = browser.observe()
             file_field = next(key for key, data in state.controls.items() if data["type"] == "file")
             browser.click(file_field)
             native.open_dialog_file(note)
-            names = page.locator("input[type=file]").evaluate(
-                "el => Array.from(el.files, f => f.name)"
-            )
-            if names != [note.name]:
-                raise AssertionError("The native dialog did not select the test file.")
+            browser.verify_dialog_file(state.url, note.name)
             print("Chrome verified a file chosen through the Windows Open dialog.")
 
             if not monitor.start():

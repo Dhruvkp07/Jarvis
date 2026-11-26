@@ -273,13 +273,7 @@ class Engine:
             raise StepError("Chrome changed tabs or pages before the file was selected.")
         self._resolved_files([key])[0].check()
         self.native.open_dialog_file(path)
-        names = self.browser.page.locator("input[type=file]").evaluate_all(
-            "els => els.flatMap(el => Array.from(el.files, f => f.name))"
-        )
-        if path.name not in names:
-            raise StepError(
-                "The native dialog closed, but Chrome did not report the expected file."
-            )
+        self.browser.verify_dialog_file(state.url, path.name)
         return self.record(f"Chrome reports {path.name} selected through the Windows Open dialog.")
 
     def _mail_prepare(self, action):
@@ -321,6 +315,11 @@ class Engine:
     def execute(self, action):
         kind, target = action.kind, action.target
         if kind in {"open_browser", "new_tab"}:
+            # Bind a shorthand browser target to the single URL the user supplied.
+            if not target.startswith(("https://", "http://")):
+                urls = {url.rstrip(".,)") for url in URL.findall(self.goal)}
+                if len(urls) == 1:
+                    target = urls.pop()
             self._allow_origin(target)
             page = self.browser.start_page(target, new_tab=kind == "new_tab")
             return f"Chrome opened {urlsplit(page.url).hostname or 'a blank tab'}."

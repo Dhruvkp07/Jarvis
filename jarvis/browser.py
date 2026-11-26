@@ -244,6 +244,20 @@ class Browser:
         if names != [path.name for path in paths]:
             raise StepError("The browser file input did not report the expected attachments.")
 
+    def verify_dialog_file(self, page_url, filename):
+        # The Win32 dialog closes before Chrome posts the DOM change event.
+        for _ in range(40):
+            self.guard()
+            if self.page.is_closed() or self.page.url != page_url:
+                raise StepError("The upload tab changed while verifying the file.")
+            names = self.page.locator("input[type=file]").evaluate_all(
+                "els => els.flatMap(el => Array.from(el.files, f => f.name))"
+            )
+            if filename in names:
+                return
+            self.page.wait_for_timeout(150)
+        raise StepError("Chrome did not report the selected file after its Open dialog closed.")
+
     def scroll(self, direction):
         if direction not in {"up", "down"}:
             raise StepError("Scroll direction must be up or down.")
