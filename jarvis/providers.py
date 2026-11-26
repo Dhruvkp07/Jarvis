@@ -179,10 +179,10 @@ class Provider:
         bound_fields = {}
         instructions = PLANNER
         goal = payload.get("goal", "")
-        urls = re.findall(r"https?://[^\\s<>\"']+", goal)
+        urls = re.findall(r"https?://[^\s<>\"']+", goal)
         # Explicit read-only requests have a small state space. Limit the model's
         # next actions to the current stage so small models cannot re-open a tab.
-        if len(urls) == 1 and re.search(r"\\b(?:only read|read.only)\\b", goal, re.I):
+        if len(urls) == 1 and re.search(r"\b(?:only read|read.only)\b", goal, re.I):
             url = urls[0].rstrip(".,)")
             browser = payload.get("observation", {}).get("browser")
             evidence = payload.get("verified_results", [])
@@ -199,7 +199,8 @@ class Provider:
                 next_step = "Read the currently open page."
             schema = {"type": "object", "properties": properties,
                       "required": list(properties), "additionalProperties": False}
-            instructions += "\\nCurrent step: " + next_step
+            bound_fields = {key: spec["enum"][0] for key, spec in properties.items() if "enum" in spec}
+            instructions += "\nCurrent step: " + next_step
         raw = self._run(instructions, json.dumps(payload, ensure_ascii=False), png, schema)
         try:
             values = json.loads(raw)
