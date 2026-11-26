@@ -158,9 +158,16 @@ class Native:
                 if pid == proc.pid or self._process_name(hwnd) in aliases:
                     self.owned.add(pid)
                     if name == "notepad":
-                        self._foreground(hwnd)
-                        self.keyboard.send_keys("^n", pause=0.01)
-                        time.sleep(0.32)
+                        if hwnd in prior or not self.win.GetWindowText(hwnd).lower().startswith(
+                            "untitled"
+                        ):
+                            self._foreground(hwnd)
+                            self.keyboard.send_keys("^n", pause=0.01)
+                            time.sleep(0.35)
+                            hwnd = self.win.GetForegroundWindow()
+                            if self._process_name(hwnd) not in aliases:
+                                raise StepError("Bring the new Notepad document to the foreground.")
+                            self.owned.add(self._pid(hwnd))
                         self._foreground(hwnd)
                     self.observe()
                     return self.win.GetWindowText(hwnd)

@@ -89,7 +89,7 @@ function showSent() {
   const query = decodeURIComponent(location.hash.replace('#search/', '').replaceAll('+',' '));
   const sent = JSON.parse(localStorage.sent || '[]')
     .filter(m => query.includes('to:' + m.recipient) && query.includes('subject:"' + m.subject + '"'));
-  if (!sent.length) node('p', 'No conversations found.', main);
+  if (!sent.length) node('p', 'No messages matched your search.', main);
   for (const message of sent) {
     const item = node('button', message.subject, main);
     item.onclick = () => {
@@ -98,7 +98,11 @@ function showSent() {
       node('div', message.body, main);
       const detail = node('button', 'Show details', main);
       detail.setAttribute('aria-label', 'Show details');
-      detail.onclick = () => node('div', 'to: ' + message.recipient, main);
+      detail.onclick = () => {
+        const row = node('tr', '', node('table', '', main));
+        node('td', 'to:', row);
+        node('td', message.recipient, row);
+      };
       for (const name of message.attachments) node('div', name, main);
     };
   }

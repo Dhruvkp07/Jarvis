@@ -63,12 +63,20 @@ def main():
             else:
                 raise AssertionError("The paused action was still valid.")
             takeover.clear()
-            print("With Chrome focused, move the mouse and press Ctrl+Shift+F10 within 25 seconds.")
+            unattended = "--automated" in sys.argv
+            if unattended:
+                native.keyboard.send_keys("^+{F10}")
+            else:
+                print(
+                    "With Chrome focused, move the mouse and press Ctrl+Shift+F10 within 25 seconds."
+                )
             if not hotkey.wait(timeout=25):
                 raise AssertionError("The emergency stop shortcut was not observed.")
-            if not takeover.is_set():
+            if not unattended and not takeover.is_set():
                 raise AssertionError("Physical keyboard/mouse takeover was not observed.")
-            print("Global emergency shortcut and manual input were observed outside Jarvis.")
+            print("Global emergency shortcut observed outside Jarvis.")
+            if not unattended:
+                print("Physical input takeover observed.")
             time.sleep(0.2)
         finally:
             monitor.close()

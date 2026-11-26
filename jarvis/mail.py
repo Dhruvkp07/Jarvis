@@ -386,12 +386,6 @@ class Gmail:
             deadline = time.monotonic() + 7
             while time.monotonic() < deadline:
                 self.guard()
-                if (
-                    lookup.get_by_role("main")
-                    .get_by_text(re.compile(r"^No conversations found\."))
-                    .count()
-                ):
-                    return False
                 results = (
                     lookup.get_by_role("main")
                     .get_by_text(draft.subject, exact=True)
@@ -401,6 +395,17 @@ class Gmail:
                     break
                 if results.count() > 1:
                     return None
+                empty = (
+                    lookup.get_by_role("main")
+                    .get_by_text(
+                        re.compile(
+                            r"^No (?:conversations found|messages matched your search)\b", re.I
+                        )
+                    )
+                    .and_(lookup.locator(":visible"))
+                )
+                if empty.count() == 1 and not lookup.locator("tr[role=row]:visible").count():
+                    return False
                 lookup.wait_for_timeout(250)
             else:
                 return None
@@ -415,14 +420,20 @@ class Gmail:
             if details.count() == 1:
                 self.guard()
                 details.click()
-            visible = lookup.locator("body").inner_text()
             shown_subject = main.get_by_text(draft.subject, exact=True).and_(
                 lookup.locator(":visible")
             )
             if shown_subject.count() != 1:
                 return None
-            to_match = re.search(r"(?im)(?:^|\n)\s*to:\s*([^\n]+)", visible)
-            if not to_match or set(EMAIL.findall(to_match.group(1).lower())) != {draft.email}:
+            recipient_row = (
+                lookup.get_by_role("row")
+                .filter(has=lookup.get_by_role("cell", name=re.compile(r"^to:$", re.I)))
+                .and_(lookup.locator(":visible"))
+            )
+            if recipient_row.count() != 1:
+                return None
+            recipients = set(EMAIL.findall(recipient_row.inner_text().lower()))
+            if recipients != {draft.email}:
                 return None
             return (
                 all(self._attachment_visible(main, item.path.name) for item in draft.files) or None
