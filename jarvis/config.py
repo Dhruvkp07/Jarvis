@@ -82,7 +82,7 @@ def save_gemini_key(secret: str):
         {
             "Type": win32cred.CRED_TYPE_GENERIC,
             "TargetName": "Jarvis/Gemini",
-            "CredentialBlob": secret.encode("utf-16-le"),
+            "CredentialBlob": secret,
             "Persist": win32cred.CRED_PERSIST_LOCAL_MACHINE,
             "UserName": "Gemini",
         },
