@@ -157,17 +157,17 @@ class Provider:
     def test(self, png=None):
         schema = {
             "type": "object",
-            "properties": {"ready": {"type": "boolean"}},
+            "properties": {"ready": {"type": "string", "enum": ["ok"]}},
             "required": ["ready"],
         }
         raw = self._run(
-            "Return ready=true.",
-            "Connection test. Any image is a synthetic test card.",
+            'Return exactly {"ready":"ok"} to acknowledge this connection test.',
+            'Return {"ready":"ok"} as JSON.',
             png,
             schema,
         )
         try:
-            if json.loads(raw).get("ready") is True:
+            if json.loads(raw).get("ready") == "ok":
                 return
         except (ValueError, AttributeError, TypeError):
             pass

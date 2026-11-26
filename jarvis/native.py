@@ -402,10 +402,17 @@ class Native:
             for item in dialog.descendants(control_type="Button")
             if item.element_info.name.replace("&", "") == label and item.is_visible()
         ]
-        if len(buttons) != 1:
-            raise StepError(f"Could not identify the Windows {label} button.")
         self.guard()
-        buttons[0].iface_invoke.Invoke()
+        if len(buttons) == 1:
+            buttons[0].iface_invoke.Invoke()
+            return
+        # Some Chrome dialogs expose a split button. Enter from the verified name
+        # field invokes the dialog's default action independently of its UIA role.
+        field.set_focus()
+        self._foreground(hwnd)
+        if not field.has_keyboard_focus() or field.iface_value.CurrentValue != str(path):
+            raise StepError(f"Could not verify the file name before {label}.")
+        self.keyboard.send_keys("{ENTER}", pause=0.02)
 
     def open_dialog_file(self, path):
         hwnd, dialog = self.dialog()
