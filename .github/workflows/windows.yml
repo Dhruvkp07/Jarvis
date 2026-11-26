@@ -46,3 +46,27 @@ jobs:
       - run: python -m pip install .
       - name: Verify Notepad, Chrome Open dialog and global stop
         run: python -u -m tests.windows_smoke --automated
+
+  live-ollama:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Jarvis and local inference runtime
+        run: |
+          python -m pip install .
+          curl -fLsS --retry 2 https://ollama.com/download/ollama-linux-amd64.tar.zst -o /tmp/ollama.tar.zst
+          sudo tar --zstd -xf /tmp/ollama.tar.zst -C /usr/local
+      - name: Use real local model to operate Chrome
+        run: |
+          ollama serve >"$RUNNER_TEMP/ollama.log" 2>&1 &
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:11434/api/version; then break; fi
+            sleep 1
+          done
+          ollama pull qwen2.5:3b
+          python -u -m tests.live_ollama

@@ -365,18 +365,36 @@ class Native:
         )
 
     def _set_dialog_file(self, hwnd, dialog, path, saving):
-        fields = [
-            item
-            for item in dialog.descendants(control_type="Edit")
-            if item.is_visible()
-            and (
-                item.element_info.automation_id in {"1001", "FileNameControlHost"}
-                or item.element_info.name.lower().startswith("file name")
-            )
-        ]
-        if len(fields) != 1:
-            raise StepError("Could not identify the Windows file name field.")
-        self._set_text(fields[0], str(path), hwnd)
+        deadline = time.monotonic() + 4
+        field = None
+        while time.monotonic() < deadline:
+            self._foreground(hwnd)
+            edits = [item for item in dialog.descendants(control_type="Edit") if item.is_visible()]
+            named = [
+                item for item in edits if item.element_info.name.lower().startswith("file name")
+            ]
+            by_id = [item for item in edits if item.element_info.automation_id == "1001"]
+            for candidates in (named, by_id):
+                if len(candidates) == 1:
+                    field = candidates[0]
+                    break
+            if field is not None:
+                break
+            time.sleep(0.1)
+        if field is None:
+            # The common dialog's File name mnemonic also works when the UIA name is absent.
+            self._foreground(hwnd)
+            self.keyboard.send_keys("%n", pause=0.02)
+            time.sleep(0.15)
+            focused = [
+                item
+                for item in dialog.descendants(control_type="Edit")
+                if item.is_visible() and item.has_keyboard_focus()
+            ]
+            if len(focused) != 1:
+                raise StepError("Could not focus the Windows file name field.")
+            field = focused[0]
+        self._set_text(field, str(path), hwnd)
         self._foreground(hwnd)
         label = "Save" if saving else "Open"
         buttons = [
