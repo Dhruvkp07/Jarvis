@@ -1,0 +1,36 @@
+name: Windows build and tests
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Create environment
+        run: python -m venv .venv
+      - name: Test and package Jarvis
+        run: .\setup.ps1 -Test -Build
+      - name: Launch packaged app and verify Chrome
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = 'offscreen'
+          $process = Start-Process .\dist\Jarvis\Jarvis.exe -ArgumentList '--self-test','packaged-check.json' -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Packaged check failed: $($process.ExitCode)" }
+          $result = Get-Content packaged-check.json -Raw | ConvertFrom-Json
+          if (-not $result.passed) { throw 'Missing packaged self-test result' }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Jarvis-Windows-x64
+          path: dist/Jarvis/
+          if-no-files-found: error
