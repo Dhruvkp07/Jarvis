@@ -1,10 +1,35 @@
 # Jarvis for Windows 11
 
-Jarvis is a Python and PySide6 desktop app that takes a task in plain English and acts through Chrome, Windows UI Automation, and an optional vision model. The result panel shows the checks Jarvis performed, such as the contents of a saved file or a matching message in Sent.
+**A desktop assistant that shows the evidence behind a completed task.**
+
+Give Jarvis an instruction in plain English. Its Python and PySide6 app can work through Chrome or supported Windows UI Automation controls. The result panel reports what it verified, such as a saved file’s contents or a matching message in Sent.
+
+[Windows executable](#windows-executable) · [Source setup](#set-up-and-launch-from-source) · [Model setup](#choose-a-model) · [Chrome and Gmail](#use-chrome-and-gmail)
+
+## Task lifecycle
+
+```mermaid
+flowchart TD
+  USER["Enter a task in Jarvis"] --> OBSERVE["Read the current app or page"]
+  OBSERVE --> PLAN["Ask the configured model for the next action"]
+  PLAN --> NEED{"Does the action need user input?"}
+  NEED -->|Yes| ASK["Pause for an answer or approval"]
+  ASK --> OBSERVE
+  NEED -->|Ready| ACT["Act through Chrome or Windows UI Automation"]
+  ACT --> CHECK["Check the result and record evidence"]
+  CHECK -->|More work| OBSERVE
+  CHECK -->|Finished| RESULT["Show status and evidence"]
+  classDef interface fill:#e1edff,stroke:#386cc0,color:#172d4d,stroke-width:2px
+  classDef decision fill:#fff1d8,stroke:#b6761d,color:#442909,stroke-width:2px
+  classDef output fill:#d8f5eb,stroke:#16846c,color:#102a26,stroke-width:2px
+  class USER,OBSERVE,ACT interface
+  class NEED,ASK decision
+  class CHECK,RESULT output
+```
 
 ## Windows executable
 
-After a successful **Windows build and tests** run, open its **Artifacts** section and download **Jarvis-Windows-x64**. Extract the entire folder and launch `Jarvis.exe`. Google Chrome and your chosen model provider are also required. The workflow runs the test suite and checks the packaged app with an actual Chrome form before uploading the executable.
+After a successful [Windows build and tests](https://github.com/Dhruvkp07/Jarvis/actions/workflows/windows.yml) run, open its **Artifacts** section and download **Jarvis-Windows-x64**. Extract the entire folder and launch `Jarvis.exe`. Google Chrome and your chosen model provider are also required. The workflow runs the test suite and checks the packaged app with an actual Chrome form before uploading the executable.
 
 ## Set up and launch from source
 
